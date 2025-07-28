@@ -56,7 +56,8 @@ This project is a simulation of a 4-DC motor robot using L293D motor driver, Ult
  🖼 Circuit Screenshot
 
  
-https://github.com/Eng-Abdulrahman7/4-DC-Motor-with-Ultrasonic-Servo/blob/ab7739537448abce1c91b6b7395b9c794e9bbf19/4-DC-Motor.png
+<img width="1919" height="826" alt="image" src="https://github.com/user-attachments/assets/8eb1c873-cca8-48f3-80fc-449a69349a61" />
+
 
 
  📋 Task Requirements (As per Presentation)
