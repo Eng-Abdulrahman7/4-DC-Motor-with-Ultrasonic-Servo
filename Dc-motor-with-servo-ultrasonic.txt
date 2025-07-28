@@ -1,0 +1,198 @@
+#include <Servo.h>
+
+// Motor control pins
+const int IN1 = 8;  // Right motors
+const int IN2 = 7;
+const int IN3 = 5;  // Left motors
+const int IN4 = 4;
+
+// Ultrasonic sensor pins
+const int trigPin = 12;
+const int echoPin = 11;
+
+// Servo motor pin
+const int servoPin = 6;
+Servo myServo;
+
+// LED pins
+const int LED_FORWARD = 2;   // Green - forward mov
+const int LED_BACKWARD = 3;  // Red -  Backward mov
+const int LED_RIGHT = A2;    // Blue - Right turn
+const int LED_LEFT = A3;     // Yellow -  left turn
+
+// Settings
+const int obstacleDistance = 10; // Critical distance in cm
+
+void setup() {
+  // Initialize motor pins
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  
+  // Initialize ultrasonic sensor
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  
+  // Initialize servo motor
+  myServo.attach(servoPin);
+  myServo.write(90); // Center position
+  
+  // Initialize LEDs
+  pinMode(LED_FORWARD, OUTPUT);
+  pinMode(LED_BACKWARD, OUTPUT);
+  pinMode(LED_RIGHT, OUTPUT);
+  pinMode(LED_LEFT, OUTPUT);
+  
+  // Start serial communication
+  Serial.begin(9600);
+}
+
+void loop() {
+  // Phase 1: Forward for 30 seconds
+  moveForward();
+  runWithObstacleCheck(30000);
+  
+  // Phase 2: Backward for 60 seconds
+  moveBackward();
+  runWithObstacleCheck(60000);
+  
+  // Phase 3: Alternate left/right for 60 seconds
+  alternateLeftRight(60000);
+}
+
+// ===== LED Control Functions =====
+void setLEDs(bool forward, bool backward, bool right, bool left) {
+  digitalWrite(LED_FORWARD, forward);
+  digitalWrite(LED_BACKWARD, backward);
+  digitalWrite(LED_RIGHT, right);
+  digitalWrite(LED_LEFT, left);
+}
+
+// ===== Obstacle Functions =====
+void runWithObstacleCheck(unsigned long duration) {
+  unsigned long startTime = millis();
+  
+  while (millis() - startTime < duration) {
+    if (checkObstacle()) {
+      avoidObstacle();
+      return;
+    }
+    delay(100);
+  }
+}
+
+bool checkObstacle() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  long duration = pulseIn(echoPin, HIGH);
+  int distance = duration * 0.034 / 2;
+  
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+  
+  return (distance <= obstacleDistance && distance > 0);
+}
+
+void avoidObstacle() {
+  stopMotors();
+  setLEDs(false, false, false, false); // off all led
+  
+  // Scan directions with servo
+  myServo.write(0);   // Look left
+  delay(500);
+  myServo.write(180); // Look right
+  delay(500);
+  myServo.write(90);  // Return to center
+  delay(500);
+  
+  // Backup and turn
+  moveBackward();
+  delay(2000);
+  turnRight();
+  delay(1000);
+  
+  stopMotors();
+}
+
+// ===== Motor Control Functions with LEDs =====
+void moveForward() {
+  // Right motors
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  // Left motors
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  
+  setLEDs(true, false, false, false); //  on only green 
+}
+
+void moveBackward() {
+  // Right motors
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  // Left motors
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  
+  setLEDs(false, true, false, false); //   on only red
+}
+
+void turnRight() {
+  // Right motors backward
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  // Left motors forward
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  
+  setLEDs(false, false, true, false); //   on only blue
+}
+
+void turnLeft() {
+  // Right motors forward
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  // Left motors backward
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  
+  setLEDs(false, false, false, true); //  on only yellow 
+}
+
+void stopMotors() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+  
+  setLEDs(false, false, false, false); //  off al led 
+}
+
+// ===== Left/Right Alternation =====
+void alternateLeftRight(unsigned long duration) {
+  unsigned long startTime = millis();
+  bool turnDirection = true; // true = right, false = left
+  
+  while (millis() - startTime < duration) {
+    if (checkObstacle()) {
+      avoidObstacle();
+      return;
+    }
+    
+    if (turnDirection) {
+      turnRight();
+    } else {
+      turnLeft();
+    }
+    
+    delay(1000);
+    turnDirection = !turnDirection;
+  }
+  stopMotors();
+}
